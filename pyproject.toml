@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "typing-speed-test"
-version = "0.1.0"
-description = "Terminal-based typing speed test CLI tool. Test your WPM and accuracy."
+version = "0.1.1"
+description = "Terminal typing-speed test: WPM and character accuracy on built-in passages."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
@@ -22,6 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Utilities",
 ]
 dependencies = [
@@ -36,9 +38,30 @@ typingspeed = "typing_test.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "ruff>=0.6.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Master-626/typing-speed-test"
 Repository = "https://github.com/Master-626/typing-speed-test"
 Issue-Tracker = "https://github.com/Master-626/typing-speed-test/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/typing_test"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+# zip(..., strict=) needs Python 3.10. This project still supports 3.8.
+ignore = ["B905"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["typing_test"]
