@@ -2,59 +2,108 @@
 CLI interface for typing-speed-test.
 """
 
+import time
+
 import click
 from rich.console import Console
 from rich.panel import Panel
 
-from .tester import TypingTest, SAMPLE_TEXTS
+from . import __version__
+from . import tester as catalog
+from .tester import (
+    SampleSelectionError,
+    TypingTest,
+    format_sample_preview,
+    select_sample_text,
+)
 
 console = Console()
 
 
 @click.group()
-@click.version_option()
+@click.version_option(__version__, prog_name="typing-test")
 def main():
     """Typing Speed Test - Test your typing speed and accuracy."""
-    pass
 
 
 @main.command()
-def start():
+@click.option(
+    "--sample",
+    "-s",
+    type=int,
+    default=1,
+    show_default=True,
+    help="1-based sample text to type (see the samples command).",
+)
+@click.option(
+    "--random",
+    "random_sample",
+    is_flag=True,
+    help="Type a randomly chosen sample instead of --sample.",
+)
+@click.pass_context
+def start(ctx: click.Context, sample: int, random_sample: bool) -> None:
     """Start a typing speed test."""
-    test = TypingTest(SAMPLE_TEXTS[0])
+    sample_was_explicit = (
+        ctx.get_parameter_source("sample") == click.core.ParameterSource.COMMANDLINE
+    )
+    if random_sample and sample_was_explicit:
+        raise click.UsageError("Use either --sample or --random, not both.")
 
-    console.print(Panel.fit(
-        "[bold cyan]Typing Speed Test[/bold cyan]\n\n"
-        "Type the following text as fast and accurately as you can.\n"
-        "Press Enter when you're done.",
-        border_style="blue"
-    ))
+    try:
+        chosen = select_sample_text(
+            None if random_sample else sample,
+            random_sample=random_sample,
+        )
+    except SampleSelectionError as exc:
+        raise click.UsageError(str(exc)) from exc
 
-    console.print(f"\n[yellow]{test.sample_text}[/yellow]\n")
+    texts = catalog.SAMPLE_TEXTS
+    index = texts.index(chosen) + 1
+    test = TypingTest(chosen)
 
+    console.print(
+        Panel.fit(
+            "\n".join(
+                [
+                    "[bold cyan]Typing Speed Test[/bold cyan]",
+                    "",
+                    f"Sample {index} of {len(texts)}.",
+                    "Type the following text as fast and accurately as you can.",
+                    "Press Enter when you're done.",
+                ]
+            ),
+            border_style="blue",
+        )
+    )
+    # markup=False so characters like "[" in the passage are printed literally.
+    console.print()
+    console.print(test.sample_text, style="yellow", markup=False)
+    console.print()
+
+    started = time.perf_counter()
     typed_text = click.prompt("Your typing")
+    elapsed = time.perf_counter() - started
 
-    # Simple timing (prompt waits for user input)
     console.print("\n[green]Test complete! Here are your results:[/green]\n")
-
-    # Show sample result (in real use, we'd measure actual time)
-    result = test.get_result_summary(typed_text, 30.0)
+    result = test.get_result_summary(typed_text, elapsed)
+    compared = max(len(typed_text), len(test.sample_text))
 
     console.print(f"📊 WPM: [bold green]{result['wpm']}[/bold green]")
     console.print(f"🎯 Accuracy: [bold green]{result['accuracy']}%[/bold green]")
     console.print(f"⏱️  Time: {result['time_seconds']}s")
-    console.print(f"⌨️  Characters: {result['correct_chars']}/{len(test.sample_text)} correct")
+    console.print(f"⌨️  Characters: {result['correct_chars']}/{compared} correct")
 
 
 @main.command()
-def samples():
+def samples() -> None:
     """Show available sample texts."""
     test = TypingTest()
     texts = test.get_sample_texts()
 
     console.print("\n📝 Available sample texts:\n")
     for i, text in enumerate(texts, 1):
-        console.print(f"  {i}. {text[:60]}...")
+        console.print(f"  {i}. {format_sample_preview(text)}", markup=False)
 
 
 if __name__ == "__main__":
