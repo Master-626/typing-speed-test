@@ -123,7 +123,7 @@ python -m ruff check .
 python -m pytest
 ```
 
-GitHub Actions runs the same lint and test steps on Python 3.8 through 3.13.
+GitHub Actions runs the same lint and test steps on Python 3.8 through 3.13. Python 3.8 and 3.9 run on Ubuntu 22.04, because the current Ubuntu runner has no installable builds for those versions. Python 3.10 and newer run on `ubuntu-latest`.
 
 ## License
 
